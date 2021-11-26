@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, Callable, TypeVar
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 

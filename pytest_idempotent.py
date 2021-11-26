@@ -1,6 +1,5 @@
-from collections.abc import Callable
 from functools import wraps
-from typing import Any, Iterator, TypeVar, cast
+from typing import Any, Callable, Iterator, TypeVar, cast
 from unittest.mock import patch
 
 import pytest

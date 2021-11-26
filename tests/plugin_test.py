@@ -1,10 +1,10 @@
-from typing import TypedDict
+from typing import NamedTuple
 
 import pytest
 from _pytest.pytester import Pytester
 
 
-class Result(TypedDict):
+class Result(NamedTuple):
     passed: int
     failed: int
 
@@ -22,7 +22,7 @@ def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:
 
     result = pytester.runpytest()
 
-    result.assert_outcomes(**expected)
+    result.assert_outcomes(**expected._asdict())
 
 
 def test_plugin_configuration(pytester: Pytester) -> None:
