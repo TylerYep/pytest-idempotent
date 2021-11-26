@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pytest_idempotent import idempotent
+from tests.test_files.src.decorator import idempotent
 
 
 @idempotent
@@ -12,14 +12,6 @@ def func(x: list[int]) -> None:
 
 @pytest.mark.test_idempotency
 def test_func() -> None:
-    x: list[int] = []
-
-    func(x)
-
-    assert x == [9]
-
-
-def test_func_without_idempotency_check() -> None:
     x: list[int] = []
 
     func(x)

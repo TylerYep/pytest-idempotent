@@ -1,13 +1,11 @@
-"""Pytest plugin module."""
-from __future__ import annotations
-
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Iterator, TypeVar, cast
 from unittest.mock import patch
 
 import pytest
-from _pytest.config import Config
+from _pytest.config import Config, PytestPluginManager
+from _pytest.config.argparsing import Parser
 from _pytest.fixtures import SubRequest
 from _pytest.python import Metafunc
 
@@ -49,7 +47,8 @@ def add_idempotency_check(request: SubRequest) -> Iterator[Any]:
 def pytest_configure(config: Config) -> None:
     """Patch the @idempotent decorator for all tests."""
     config.addinivalue_line(
-        "markers", "test_idempotency: mark test to run idempotency tests"
+        "markers",
+        "test_idempotency: mark test function or test class to run idempotency tests",
     )
 
     def _idempotent(func: _F) -> _F:
@@ -72,4 +71,30 @@ def pytest_configure(config: Config) -> None:
     # We need to patch the decorator in this function because the decorator
     # is applied when the module is imported, and once that happens it is too
     # late to patch its functionality.
-    patch("pytest_idempotent.idempotent", _idempotent).start()
+    patch(config.getoption("--idempotent-path"), _idempotent).start()
+
+
+def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager) -> None:
+    """Used to override the module path of the idempotent decorator function."""
+    parser.addoption(
+        "--idempotent-path",
+        default=(
+            pluginmanager.hook.pytest_idempotent_decorator()
+            or "pytest_idempotent.idempotent"
+        ),
+    )
+
+
+class PytestIdempotentSpec:
+    """Hook specification namespace for this plugin."""
+
+    @pytest.hookspec(firstresult=True)  # type: ignore[misc]
+    def pytest_idempotent_decorator(self) -> str:
+        """
+        Plugin users define this function in conftest.py to configure
+        the default path for the @idempotent decorator.
+        """
+
+
+def pytest_addhooks(pluginmanager: PytestPluginManager) -> None:
+    pluginmanager.add_hookspecs(PytestIdempotentSpec)

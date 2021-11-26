@@ -18,3 +18,11 @@ def test_func() -> None:
     func(x)
 
     assert x == [9]
+
+
+def test_func_without_idempotency_check() -> None:
+    x: list[int] = []
+
+    func(x)
+
+    assert x == [9]
