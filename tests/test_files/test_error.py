@@ -7,6 +7,7 @@ from pytest_idempotent import idempotent
 
 @idempotent
 def func(x: list[int]) -> None:
+    """Not idempotent."""
     x += [9]
 
 

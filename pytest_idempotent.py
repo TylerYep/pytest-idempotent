@@ -28,7 +28,12 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
     selected tests twice, one as normal and one with the idempotency check.
     """
     if metafunc.definition.get_closest_marker("test_idempotency"):
-        metafunc.parametrize("add_idempotency_check", (False, True), indirect=True)
+        metafunc.parametrize(
+            "add_idempotency_check",
+            (False, True),
+            indirect=True,
+            ids=("no-idempotency-check", "idempotency-check"),
+        )
 
 
 @pytest.fixture(autouse=True)
@@ -56,7 +61,9 @@ def pytest_configure(config: Config) -> None:
         Runs the provided function twice, which allows the test to verify
         whether the provided function is idempotent.
 
-        Returns the first run's result.
+        Returns the first run's result, which allows backwards-compatibility
+        e.g. a function that returns True if updated and False otherwise
+            is acceptably idempotent.
         """
 
         @wraps(func)
