@@ -17,7 +17,7 @@ pip install pytest-idempotent
 
 ## Documentation
 
-Suppose we had the following function, that we (incorrectly) assume is idempotent (AKA we should be able to run it more than once without any adverse effects).
+Suppose we had the following function, that we (incorrectly) assumed is idempotent (AKA we should be able to run it more than once without any adverse effects).
 
 ```python
 from pytest_idempotent import idempotent  # or use your own decorator!
@@ -114,8 +114,7 @@ To use your own `@idempotent` decorator, you can override the `pytest_idempotent
 
 ```python
 # conftest.py
-
-# You can define this to ensure the plugin is correctly installed
+# Optional: you can define this to ensure the plugin is correctly installed
 pytest_plugins = ["pytest_idempotent"]
 
 

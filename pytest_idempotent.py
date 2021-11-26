@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 from _pytest.config import Config, PytestPluginManager
-from _pytest.config.argparsing import Parser
 from _pytest.fixtures import SubRequest
 from _pytest.python import Metafunc
 
@@ -77,18 +76,13 @@ def pytest_configure(config: Config) -> None:
     # We need to patch the decorator in this function because the decorator
     # is applied when the module is imported, and once that happens it is too
     # late to patch its functionality.
-    patch(config.getoption("--idempotent-path"), _idempotent).start()
-
-
-def pytest_addoption(parser: Parser, pluginmanager: PytestPluginManager) -> None:
-    """Used to override the module path of the idempotent decorator function."""
-    parser.addoption(
-        "--idempotent-path",
-        default=(
-            pluginmanager.hook.pytest_idempotent_decorator()
+    patch(
+        (
+            config.pluginmanager.hook.pytest_idempotent_decorator()
             or "pytest_idempotent.idempotent"
         ),
-    )
+        _idempotent,
+    ).start()
 
 
 class PytestIdempotentSpec:
