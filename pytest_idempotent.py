@@ -24,8 +24,16 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
     """
     If @pytest.mark.test_idempotency is added to a function or class, run all
     selected tests twice, one as normal and one with the idempotency check.
+
+    Allowed forms:
+    @pytest.mark.test_idempotency
+    @pytest.mark.test_idempotency(enabled=True)
+    @pytest.mark.test_idempotency(enabled=False)
     """
-    if metafunc.definition.get_closest_marker("test_idempotency"):
+    marker = metafunc.definition.get_closest_marker("test_idempotency")
+    if marker is not None and (
+        "enabled" not in marker.kwargs or marker.kwargs["enabled"]
+    ):
         metafunc.parametrize(
             "add_idempotency_check",
             (False, True),
@@ -35,7 +43,7 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
 
 @pytest.fixture(autouse=True)
-def add_idempotency_check(request: SubRequest) -> Iterator[Any]:
+def add_idempotency_check(request: SubRequest) -> Iterator[None]:
     """
     This fixture is added to all tests, but only patches CHECK_IDEMPOTENCY
     if this fixture is parametrized by the pytest_generate_tests metafunc.
@@ -51,7 +59,10 @@ def pytest_configure(config: Config) -> None:
     """Patch the @idempotent decorator for all tests."""
     config.addinivalue_line(
         "markers",
-        "test_idempotency: mark test function or test class to run idempotency tests",
+        (
+            "test_idempotency(enabled=True): mark test function or "
+            "test class to run idempotency tests"
+        ),
     )
 
     def _idempotent(func: _F) -> _F:
