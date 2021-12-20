@@ -5,7 +5,7 @@ import pytest
 from pytest_idempotent import idempotent
 
 
-@idempotent
+@idempotent()
 def func(x: list[int]) -> None:
     """Correctly Idempotent."""
     if not x:

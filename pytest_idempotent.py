@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from functools import wraps
-from typing import Any, Callable, Iterator, TypeVar, cast
+from typing import Any, Callable, Iterator, TypeVar, cast, overload
 from unittest.mock import patch
 
 import pytest
@@ -11,12 +13,30 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 CHECK_IDEMPOTENCY = False  # global variable needed for idempotency check
 
 
-def idempotent(func: _F) -> _F:
+class ReturnValuesNotEqual(Exception):
+    message = "Return values of idempotent functions must be equal."
+
+
+@overload
+def idempotent(func: _F | None) -> _F:
+    ...
+
+
+@overload
+def idempotent(*, equal_return: bool = False) -> Callable[[_F], _F]:
+    ...
+
+
+def idempotent(func: _F | None = None, equal_return: bool = False) -> _F | None:
     """
     No-op during runtime.
     This marker allows Pytest to override the decorated function
-    during test-time to verify the function is idempotent.
+    during test-time to verify the function is idempotent (e.g. no side effects).
+
+    Use `equal_return=True` to specify that the function should always returns
+    the same output when run multiple times.
     """
+    del equal_return
     return func
 
 
@@ -64,36 +84,48 @@ def pytest_configure(config: Config) -> None:
             "test class to run idempotency tests"
         ),
     )
+    decorator_path = (
+        config.pluginmanager.hook.pytest_idempotent_decorator()
+        or "pytest_idempotent.idempotent"
+    )
 
-    def _idempotent(func: _F) -> _F:
+    def _idempotent(func: _F | None = None, equal_return: bool = False) -> Any:
         """
-        Runs the provided function twice, which allows the test to verify
-        whether the provided function is idempotent.
+        Adds the `equal_return` parameter.
 
-        Returns the first run's result, which allows backwards-compatibility
-        e.g. a function that returns True if updated and False otherwise
-            is acceptably idempotent.
+        The `func` pararmeter is only used to distinguish between:
+            @idempotent
+            @idempotent()
+            @idempotent(equal_return=True)
         """
 
-        @wraps(func)
-        def new_func(*args: Any, **kwargs: Any) -> Any:
-            run_1 = func(*args, **kwargs)
-            if CHECK_IDEMPOTENCY:
-                _ = func(*args, **kwargs)
-            return run_1
+        @wraps(cast(_F, func))
+        def _idempotent_inner(user_func: _F) -> _F:
+            """
+            Runs the provided function twice, which allows the test to verify
+            whether the provided function is idempotent.
 
-        return cast(_F, new_func)
+            Returns the first run's result, which allows backwards-compatibility.
+            e.g. a function that returns True if updated and False otherwise
+                is acceptably idempotent, unless equal_return = True.
+            """
+
+            def run_twice(*args: Any, **kwargs: Any) -> Any:
+                run_1 = user_func(*args, **kwargs)
+                if CHECK_IDEMPOTENCY:
+                    run_2 = user_func(*args, **kwargs)
+                    if equal_return and run_1 != run_2:
+                        raise ReturnValuesNotEqual(run_1, run_2)
+                return run_1
+
+            return cast(_F, run_twice)
+
+        return _idempotent_inner if func is None else _idempotent_inner(func)
 
     # We need to patch the decorator in this function because the decorator
     # is applied when the module is imported, and once that happens it is too
     # late to patch its functionality.
-    patch(
-        (
-            config.pluginmanager.hook.pytest_idempotent_decorator()
-            or "pytest_idempotent.idempotent"
-        ),
-        _idempotent,
-    ).start()
+    patch(decorator_path, _idempotent).start()
 
 
 class PytestIdempotentSpec:
