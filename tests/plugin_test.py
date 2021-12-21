@@ -12,10 +12,11 @@ class Result(NamedTuple):
 @pytest.mark.parametrize(
     "filename,expected",
     (
-        ("test_error.py", Result(passed=2, failed=1)),
-        ("test_correct.py", Result(passed=3, failed=0)),
         ("test_class.py", Result(passed=7, failed=0)),
-        ("test_equal_return.py", Result(passed=4, failed=1)),
+        ("test_correct.py", Result(passed=3, failed=0)),
+        ("test_equal_return.py", Result(passed=3, failed=1)),
+        ("test_error.py", Result(passed=1, failed=1)),
+        ("test_missing_check.py", Result(passed=0, failed=1)),
     ),
 )
 def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:

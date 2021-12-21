@@ -38,12 +38,3 @@ def test_func_2() -> None:
     func_2(x)
 
     assert x == [9]
-
-
-def test_funcs_without_idempotency_check() -> None:
-    x: list[int] = []
-
-    func(x)
-    func_2(x)
-
-    assert x == [9]

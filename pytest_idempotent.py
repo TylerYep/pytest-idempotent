@@ -7,14 +7,29 @@ from unittest.mock import patch
 import pytest
 from _pytest.config import Config, PytestPluginManager
 from _pytest.fixtures import SubRequest
+from _pytest.nodes import Item
 from _pytest.python import Metafunc
 
 _F = TypeVar("_F", bound=Callable[..., Any])
-CHECK_IDEMPOTENCY = False  # global variable needed for idempotency check
 
 
 class ReturnValuesNotEqual(Exception):
     message = "Return values of idempotent functions must be equal."
+
+
+class GlobalState:
+    """
+    Store essential metadata needed during the test runs.
+
+    CHECK_IDEMPOTENCY: used to toggle the idempotency patch on/off
+    current_test_item: a reference to the current pytest test context.
+    """
+
+    CHECK_IDEMPOTENCY: bool = False
+    current_test_item: Item | None = None
+
+
+_global_state = GlobalState()  # global variable needed for idempotency checking
 
 
 @overload
@@ -50,6 +65,10 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
     @pytest.mark.test_idempotency(enabled=True)
     @pytest.mark.test_idempotency(enabled=False)
     """
+    invalid_marker = metafunc.definition.get_closest_marker("test_idempotent")
+    if invalid_marker is not None:
+        raise RuntimeError("Use @pytest.mark.test_idempotency instead.")
+
     marker = metafunc.definition.get_closest_marker("test_idempotency")
     if marker is not None and (
         "enabled" not in marker.kwargs or marker.kwargs["enabled"]
@@ -69,14 +88,13 @@ def add_idempotency_check(request: SubRequest) -> Iterator[None]:
     if this fixture is parametrized by the pytest_generate_tests metafunc.
     """
     if hasattr(request, "param"):
-        with patch("pytest_idempotent.CHECK_IDEMPOTENCY", request.param):
+        with patch("pytest_idempotent.GlobalState.CHECK_IDEMPOTENCY", request.param):
             yield
     else:
         yield
 
 
 def pytest_configure(config: Config) -> None:
-    """Patch the @idempotent decorator for all tests."""
     config.addinivalue_line(
         "markers",
         (
@@ -84,16 +102,22 @@ def pytest_configure(config: Config) -> None:
             "test class to run idempotency tests"
         ),
     )
+
+
+def pytest_collection(session: pytest.Session) -> None:
+    """Patch the @idempotent decorator for all tests."""
     decorator_path = (
-        config.pluginmanager.hook.pytest_idempotent_decorator()
+        session.config.pluginmanager.hook.pytest_idempotent_decorator()
         or "pytest_idempotent.idempotent"
     )
 
-    def _idempotent(func: _F | None = None, equal_return: bool = False) -> Any:
+    def _idempotent(
+        func: _F | None = None, equal_return: bool = False, enforce_tests: bool = True
+    ) -> Any:
         """
         Adds the `equal_return` parameter.
 
-        The `func` pararmeter is only used to distinguish between:
+        The `func` pararmeter is only used to distinguish between different calls e.g.
             @idempotent
             @idempotent()
             @idempotent(equal_return=True)
@@ -101,18 +125,36 @@ def pytest_configure(config: Config) -> None:
 
         @wraps(cast(_F, func))
         def _idempotent_inner(user_func: _F) -> _F:
-            """
-            Runs the provided function twice, which allows the test to verify
-            whether the provided function is idempotent.
-
-            Returns the first run's result, which allows backwards-compatibility.
-            e.g. a function that returns True if updated and False otherwise
-                is acceptably idempotent, unless equal_return = True.
-            """
+            """Wrapper function used to handle the decorator with + without args."""
 
             def run_twice(*args: Any, **kwargs: Any) -> Any:
+                """
+                This function contains the new behavior of @idempotent.
+
+                Runs the provided function twice, which allows the test to verify
+                whether the provided function is idempotent.
+
+                Returns the first run's result, which allows backwards-compatibility.
+                e.g. a function that returns True if updated and False otherwise
+                    is acceptably idempotent, unless equal_return = True.
+                """
+                assert _global_state.current_test_item is not None
+                if (
+                    enforce_tests
+                    and _global_state.current_test_item.get_closest_marker(
+                        "test_idempotency"
+                    )
+                    is None
+                ):
+                    pytest.fail(
+                        "Test contains a call to an @idempotent function "
+                        "without setting @pytest.mark.test_idempotency. If "
+                        "the test should not test idempotent behavior, use: "
+                        "@pytest.mark.test_idempotency(enabled=False)"
+                    )
+
                 run_1 = user_func(*args, **kwargs)
-                if CHECK_IDEMPOTENCY:
+                if _global_state.CHECK_IDEMPOTENCY:
                     run_2 = user_func(*args, **kwargs)
                     if equal_return and run_1 != run_2:
                         raise ReturnValuesNotEqual(run_1, run_2)
@@ -126,6 +168,14 @@ def pytest_configure(config: Config) -> None:
     # is applied when the module is imported, and once that happens it is too
     # late to patch its functionality.
     patch(decorator_path, _idempotent).start()
+
+
+def pytest_runtest_call(item: Item) -> None:
+    """
+    Before the test begins, update the global state to
+    point to the current test context.
+    """
+    _global_state.current_test_item = item
 
 
 class PytestIdempotentSpec:
