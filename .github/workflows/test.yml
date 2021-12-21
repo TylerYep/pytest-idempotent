@@ -28,7 +28,8 @@ jobs:
       run: |
         mypy .
     - name: pytest
+      if: always()
       run: |
-        pytest --cov=pytest_idempotent --cov-report= --durations=0
+        pytest --cov=pytest_idempotent --cov-report= --durations=0 --ignore=tests/test_files
     - name: codecov
       uses: codecov/codecov-action@v1
