@@ -85,11 +85,13 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - This decorator serves as a visual aid. If this decorator is commonly used in the codebase, it is much easier to consider idempotency for new and existing functions.
   - At runtime, this decorator is a no-op.
   - At test-time, if the feature is enabled, we will run the decorated function twice with the same parameters in all test cases.
+  - We can also assert that the second run returns the same result as an additional parameter to the function's decorator: `@idempotent(equal_return=True)`.
 
-- For all tests marked with `@pytest.mark.idempotent`, we run each test twice: once normally, and once with the decorated function called twice.
+- For all tests marked using `@pytest.mark.idempotent`, we run each test twice: once normally, and once with the decorated function called twice.
   - Both runs need to pass all assertions.
   - We return the first result because the first run should complete the processing. The second will either return exact the same result or be a no-op.
-  - We can also assert that the second run returns the same result as an additional parameter.
+  - To disable idempotency testing for a test or group of tests, use:
+  `@pytest.mark.idempotent(run_twice=False)`
 
 ## @idempotent decorator
 

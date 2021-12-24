@@ -145,9 +145,9 @@ def pytest_collection(session: pytest.Session) -> None:
                     is None
                 ):
                     pytest.fail(
-                        "Test contains a call to an @idempotent function "
-                        "without setting @pytest.mark.idempotent. If "
-                        "the test should not test idempotent behavior, use: "
+                        "Test contains a call to an @idempotent function without "
+                        "setting @pytest.mark.idempotent. To skip testing "
+                        "idempotent behavior, add the marker: "
                         "@pytest.mark.idempotent(run_twice=False)"
                     )
 
