@@ -148,7 +148,7 @@ def pytest_collection(session: pytest.Session) -> None:
                         "Test contains a call to an @idempotent function "
                         "without setting @pytest.mark.idempotent. If "
                         "the test should not test idempotent behavior, use: "
-                        "@pytest.mark.idempotent(enabled=False)"
+                        "@pytest.mark.idempotent(run_twice=False)"
                     )
 
                 run_1 = user_func(*args, **kwargs)
