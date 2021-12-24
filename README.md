@@ -91,7 +91,7 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - Both runs need to pass all assertions.
   - We return the first result because the first run should complete the processing. The second will either return exact the same result or be a no-op.
   - To disable idempotency testing for a test or group of tests, use:
-  `@pytest.mark.idempotent(run_twice=False)`
+    `@pytest.mark.idempotent(run_twice=False)`
 
 ## @idempotent decorator
 
