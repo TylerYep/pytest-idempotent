@@ -22,7 +22,7 @@ def func_2(x: list[int]) -> bool:
     return False
 
 
-@pytest.mark.test_idempotency
+@pytest.mark.idempotent
 def test_func() -> None:
     x: list[int] = []
 
@@ -31,7 +31,7 @@ def test_func() -> None:
     assert x == [9]
 
 
-@pytest.mark.test_idempotency
+@pytest.mark.idempotent
 def test_func_2() -> None:
     x: list[int] = []
 

@@ -12,7 +12,7 @@ def func(x: list[int]) -> None:
         x += [9]
 
 
-@pytest.mark.test_idempotency
+@pytest.mark.idempotent
 class TestVariousFunctions:
     @staticmethod
     def test_func() -> None:
@@ -23,7 +23,7 @@ class TestVariousFunctions:
         assert x == [9]
 
     @staticmethod
-    @pytest.mark.test_idempotency(enabled=False)
+    @pytest.mark.idempotent(run_twice=False)
     def test_func_without_idempotency_check() -> None:
         x: list[int] = []
 
@@ -32,7 +32,7 @@ class TestVariousFunctions:
         assert x == [9]
 
     @staticmethod
-    @pytest.mark.test_idempotency
+    @pytest.mark.idempotent
     def test_func_with_double_idempotency_check() -> None:
         x: list[int] = []
 
@@ -41,7 +41,7 @@ class TestVariousFunctions:
         assert x == [9]
 
     @staticmethod
-    @pytest.mark.test_idempotency(enabled=True)
+    @pytest.mark.idempotent(run_twice=True)
     def test_func_with_double_idempotency_enabled() -> None:
         x: list[int] = []
 

@@ -57,21 +57,21 @@ def idempotent(func: _F | None = None, equal_return: bool = False) -> _F | None:
 
 def pytest_generate_tests(metafunc: Metafunc) -> None:
     """
-    If @pytest.mark.test_idempotency is added to a function or class, run all
+    If @pytest.mark.idempotent is added to a function or class, run all
     selected tests twice, one as normal and one with the idempotency check.
 
     Allowed forms:
-    @pytest.mark.test_idempotency
-    @pytest.mark.test_idempotency(enabled=True)
-    @pytest.mark.test_idempotency(enabled=False)
+    @pytest.mark.idempotent
+    @pytest.mark.idempotent(run_twice=True)
+    @pytest.mark.idempotent(run_twice=False)
     """
-    invalid_marker = metafunc.definition.get_closest_marker("test_idempotent")
+    invalid_marker = metafunc.definition.get_closest_marker("test_idempotency")
     if invalid_marker is not None:
-        raise RuntimeError("Use @pytest.mark.test_idempotency instead.")
+        raise RuntimeError("Use @pytest.mark.idempotent instead.")
 
-    marker = metafunc.definition.get_closest_marker("test_idempotency")
+    marker = metafunc.definition.get_closest_marker("idempotent")
     if marker is not None and (
-        "enabled" not in marker.kwargs or marker.kwargs["enabled"]
+        "run_twice" not in marker.kwargs or marker.kwargs["run_twice"]
     ):
         metafunc.parametrize(
             "add_idempotency_check",
@@ -98,8 +98,8 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line(
         "markers",
         (
-            "test_idempotency(enabled=True): mark test function or "
-            "test class to run idempotency tests"
+            "idempotent(run_twice=True): mark test function or test class "
+            "to run idempotency tests"
         ),
     )
 
@@ -141,16 +141,14 @@ def pytest_collection(session: pytest.Session) -> None:
                 assert _global_state.current_test_item is not None
                 if (
                     enforce_tests
-                    and _global_state.current_test_item.get_closest_marker(
-                        "test_idempotency"
-                    )
+                    and _global_state.current_test_item.get_closest_marker("idempotent")
                     is None
                 ):
                     pytest.fail(
                         "Test contains a call to an @idempotent function "
-                        "without setting @pytest.mark.test_idempotency. If "
+                        "without setting @pytest.mark.idempotent. If "
                         "the test should not test idempotent behavior, use: "
-                        "@pytest.mark.test_idempotency(enabled=False)"
+                        "@pytest.mark.idempotent(enabled=False)"
                     )
 
                 run_1 = user_func(*args, **kwargs)

@@ -35,7 +35,7 @@ We can write an idempotency test for this function as follows:
 # idempotency_test.py
 import pytest
 
-@pytest.mark.test_idempotency
+@pytest.mark.idempotent
 def test_func() -> None:
     x: list[int] = []
 
@@ -44,7 +44,7 @@ def test_func() -> None:
     assert x == [9]
 ```
 
-Adding the `@pytest.mark.test_idempotency` mark automatically splits this test into two - one that tests the regular behavior and one that tests that the function can be called twice without adverse effects.
+Adding the `@pytest.mark.idempotent` mark automatically splits this test into two - one that tests the regular behavior and one that tests that the function can be called twice without adverse effects.
 
 ```
 ❯❯❯ pytest
@@ -58,7 +58,7 @@ tests/idempotency_test.py .F                     [100%]
 =====================  FAILURES ========================
 ------------- test_func[idempotency-check] -------------
 
-    @pytest.mark.test_idempotency
+    @pytest.mark.idempotent
     def test_func() -> None:
         x: list[int] = []
 
@@ -86,7 +86,7 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - At runtime, this decorator is a no-op.
   - At test-time, if the feature is enabled, we will run the decorated function twice with the same parameters in all test cases.
 
-- For all tests marked with `@pytest.mark.test_idempotency`, we run each test twice: once normally, and once with the decorated function called twice.
+- For all tests marked with `@pytest.mark.idempotent`, we run each test twice: once normally, and once with the decorated function called twice.
   - Both runs need to pass all assertions.
   - We return the first result because the first run should complete the processing. The second will either return exact the same result or be a no-op.
   - We can also assert that the second run returns the same result as an additional parameter.
