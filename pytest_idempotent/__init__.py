@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from _pytest.config import Config, PytestPluginManager
 from _pytest.fixtures import SubRequest
+from _pytest.main import Session
 from _pytest.nodes import Item
 from _pytest.python import Metafunc
 
@@ -38,21 +39,30 @@ def idempotent(func: _F | None) -> _F:
 
 
 @overload
-def idempotent(*, equal_return: bool = False) -> Callable[[_F], _F]:
+def idempotent(
+    *, equal_return: bool = False, enforce_tests: bool = True
+) -> Callable[[_F], _F]:
     ...
 
 
-def idempotent(func: _F | None = None, equal_return: bool = False) -> _F | None:
+def idempotent(
+    func: _F | None = None, equal_return: bool = False, enforce_tests: bool = True
+) -> Any:
     """
     No-op during runtime.
-    This marker allows Pytest to override the decorated function
-    during test-time to verify the function is idempotent (e.g. no side effects).
+    This marker allows Pytest to override the decorated function during
+    test-time to verify the function is idempotent (e.g. no side effects).
 
     Use `equal_return=True` to specify that the function should always returns
     the same output when run multiple times.
     """
-    del equal_return
-    return func
+    del equal_return, enforce_tests
+
+    @wraps(cast(_F, func))
+    def _idempotent_inner(user_func: _F) -> _F:
+        return user_func
+
+    return _idempotent_inner if func is None else _idempotent_inner(func)
 
 
 def pytest_generate_tests(metafunc: Metafunc) -> None:

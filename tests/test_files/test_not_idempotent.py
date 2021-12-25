@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import pytest
 
-from tests.test_files.src.decorator import idempotent
+from pytest_idempotent import idempotent
 
 
 @idempotent
-def func(x: list[int]) -> None:
+def not_idempotent_function(x: list[int]) -> None:
     x += [9]
 
 
 @pytest.mark.idempotent
-def test_func() -> None:
+def test_case() -> None:
     x: list[int] = []
 
-    func(x)
+    not_idempotent_function(x)
 
     assert x == [9]

@@ -4,15 +4,14 @@ from pytest_idempotent import idempotent
 
 
 @idempotent
-def func(x: list[int]) -> None:
-    """Correctly Idempotent."""
+def idempotent_function(x: list[int]) -> None:
     if not x:
         x += [9]
 
 
-def test_func_without_idempotency_check() -> None:
+def test_without_marker() -> None:
     x: list[int] = []
 
-    func(x)
+    idempotent_function(x)
 
     assert x == [9]

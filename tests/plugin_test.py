@@ -13,10 +13,15 @@ class Result(NamedTuple):
     "filename,expected",
     (
         ("test_class.py", Result(passed=7, failed=0)),
-        ("test_correct.py", Result(passed=3, failed=0)),
-        ("test_equal_return.py", Result(passed=3, failed=1)),
-        ("test_error.py", Result(passed=1, failed=1)),
-        ("test_missing_check.py", Result(passed=0, failed=1)),
+        ("test_correct_behavior.py", Result(passed=2, failed=0)),
+        # ("test_custom_decorator.py", Result(passed=2, failed=0)),
+        ("test_equal_return_fail.py", Result(passed=1, failed=1)),
+        ("test_equal_return_pass.py", Result(passed=2, failed=0)),
+        ("test_incorrect_but_idempotent.py", Result(passed=0, failed=2)),
+        ("test_missing_marker_fail.py", Result(passed=0, failed=1)),
+        ("test_missing_marker_ignore.py", Result(passed=1, failed=0)),
+        ("test_missing_marker_pass.py", Result(passed=1, failed=0)),
+        ("test_not_idempotent.py", Result(passed=1, failed=1)),
     ),
 )
 def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:
@@ -28,7 +33,7 @@ def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:
     result.assert_outcomes(**expected._asdict())
 
 
-def test_plugin_configuration(pytester: Pytester) -> None:
+def test_custom_decorator_config(pytester: Pytester) -> None:
     pytester.makeconftest(
         """
         pytest_plugins = ['pytest_idempotent']
@@ -37,7 +42,7 @@ def test_plugin_configuration(pytester: Pytester) -> None:
             return 'tests.test_files.src.decorator.idempotent'
         """
     )
-    pytester.copy_example("tests/test_files/test_config.py")
+    pytester.copy_example("tests/test_files/test_custom_decorator.py")
 
     result = pytester.runpytest()
 

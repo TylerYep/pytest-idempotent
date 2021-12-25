@@ -6,15 +6,15 @@ from pytest_idempotent import idempotent
 
 
 @idempotent
-def func(x: list[int]) -> None:
-    """Not idempotent."""
-    x += [9]
+def idempotent_function(x: list[int]) -> None:
+    if not x:
+        x += [9]
 
 
 @pytest.mark.idempotent
-def test_func() -> None:
+def test_case() -> None:
     x: list[int] = []
 
-    func(x)
+    idempotent_function(x)
 
     assert x == [9]

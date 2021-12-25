@@ -7,7 +7,6 @@ from pytest_idempotent import idempotent
 
 @idempotent()
 def func(x: list[int]) -> None:
-    """Correctly Idempotent."""
     if not x:
         x += [9]
 
