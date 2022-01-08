@@ -7,6 +7,7 @@ from _pytest.pytester import Pytester
 class Result(NamedTuple):
     passed: int
     failed: int
+    warnings: int = 0
 
 
 @pytest.mark.parametrize(
@@ -22,15 +23,19 @@ class Result(NamedTuple):
         ("test_missing_marker_pass.py", Result(passed=1, failed=0)),
         ("test_missing_marker_in_try_except.py", Result(passed=0, failed=1)),
         ("test_not_idempotent.py", Result(passed=1, failed=1)),
+        ("test_warn_unnecessary_marker.py", Result(passed=5, failed=0, warnings=2)),
     ),
 )
 def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:
     pytester.makeconftest("pytest_plugins = ['pytest_idempotent']")
     pytester.copy_example(f"tests/test_files/{filename}")
 
-    result = pytester.runpytest()
+    result = pytester.runpytest("-W", "ignore::pytest.PytestAssertRewriteWarning")
 
-    result.assert_outcomes(**expected._asdict())
+    # In Pytest 7, warnings is included in assert_outcomes()
+    expected_result = expected._asdict()
+    assert result.parseoutcomes().get("warnings", 0) == expected_result.pop("warnings")
+    result.assert_outcomes(**expected_result)
 
 
 def test_custom_decorator_config(pytester: Pytester) -> None:
