@@ -17,17 +17,19 @@ pip install pytest-idempotent
 
 ## Documentation
 
-Suppose we had the following function, that we (incorrectly) assumed is idempotent (AKA we should be able to run it more than once without any adverse effects).
+Suppose we had the following function, that we (incorrectly) assumed was idempotent. How would we write a test for this?
+
+First, we can label the function with a decorator:
 
 ```python
-from pytest_idempotent import idempotent  # or use your own decorator!
+from pytest_idempotent import idempotent  # or use your own decorator! See below.
 
 @idempotent
 def func(x: list[int]) -> None:
     x += [9]
 ```
 
-Note: this function is _not_ idempotent because calling it on the same list `x` grows the size of `x` by 1 each time.
+Note: this function is _not_ idempotent because calling it on the same list `x` grows the size of `x` by 1 each time. To be idempotent, we should be able to run `func` more than once without any adverse effects.
 
 We can write an idempotency test for this function as follows:
 
@@ -85,12 +87,12 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - This decorator serves as a visual aid. If this decorator is commonly used in the codebase, it is much easier to consider idempotency for new and existing functions.
   - At runtime, this decorator is a no-op.
   - At test-time, if the feature is enabled, we will run the decorated function twice with the same parameters in all test cases.
-  - We can also assert that the second run returns the same result as an additional parameter to the function's decorator: `@idempotent(equal_return=True)`.
+  - We can also assert that the second run returns the same result using an additional parameter to the function's decorator: `@idempotent(equal_return=True)`.
 
 - For all tests marked using `@pytest.mark.idempotent`, we run each test twice: once normally, and once with the decorated function called twice.
   - Both runs need to pass all assertions.
-  - We return the first result because the first run should complete the processing. The second will either return exact the same result or be a no-op.
-  - To disable idempotency testing for a test or group of tests, use:
+  - We return the first result because the first run will complete the processing. The second will either return exact the same result or be a no-op.
+  - To disable idempotency testing for a test or group of tests, add the Pytest marker:
     `@pytest.mark.idempotent(run_twice=False)`
 
 ## @idempotent decorator

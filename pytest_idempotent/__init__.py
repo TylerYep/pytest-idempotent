@@ -7,7 +7,6 @@ from unittest.mock import patch
 import pytest
 from _pytest.config import Config, PytestPluginManager
 from _pytest.fixtures import SubRequest
-from _pytest.main import Session
 from _pytest.nodes import Item
 from _pytest.python import Metafunc
 
@@ -72,8 +71,8 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
     Allowed forms:
     @pytest.mark.idempotent
-    @pytest.mark.idempotent(run_twice=True)
-    @pytest.mark.idempotent(run_twice=False)
+    @pytest.mark.idempotent(enabled=True)
+    @pytest.mark.idempotent(enabled=False)
     """
     invalid_marker = metafunc.definition.get_closest_marker("test_idempotency")
     if invalid_marker is not None:
@@ -81,7 +80,7 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
     marker = metafunc.definition.get_closest_marker("idempotent")
     if marker is not None and (
-        "run_twice" not in marker.kwargs or marker.kwargs["run_twice"]
+        "enabled" not in marker.kwargs or marker.kwargs["enabled"]
     ):
         metafunc.parametrize(
             "add_idempotency_check",
@@ -108,7 +107,7 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line(
         "markers",
         (
-            "idempotent(run_twice=True): mark test function or test class "
+            "idempotent(enabled=True): mark test function or test class "
             "to run idempotency tests"
         ),
     )
@@ -155,10 +154,12 @@ def pytest_collection(session: pytest.Session) -> None:
                     is None
                 ):
                     pytest.fail(
-                        "Test contains a call to an @idempotent function without "
-                        "setting @pytest.mark.idempotent. To skip testing "
-                        "idempotent behavior, add the marker: "
-                        "@pytest.mark.idempotent(run_twice=False)"
+                        "Test contains a call to the @idempotent decorated function: "
+                        f"'{user_func.__qualname__}',\nbut the test does not use "
+                        "the @pytest.mark.idempotent marker.\nPlease add this "
+                        "marker to your test function or test class.\nTo skip "
+                        "idempotency testing, add the marker with enabled=False: "
+                        "@pytest.mark.idempotent(enabled=False)"
                     )
 
                 run_1 = user_func(*args, **kwargs)

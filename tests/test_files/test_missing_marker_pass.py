@@ -11,7 +11,7 @@ def idempotent_function(x: list[int]) -> None:
         x += [9]
 
 
-@pytest.mark.idempotent(run_twice=False)
+@pytest.mark.idempotent(enabled=False)
 def test_case() -> None:
     x: list[int] = []
 
