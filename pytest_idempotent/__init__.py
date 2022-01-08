@@ -13,6 +13,18 @@ from _pytest.python import Metafunc
 _F = TypeVar("_F", bound=Callable[..., Any])
 
 
+class MissingPytestIdempotentMarker(BaseException):
+    """
+    This exception should fail the test immediately. To capture most cases,
+    we inherit BaseException in order to force exit the test.
+    """
+
+    message = (
+        "All tests containing @idempotent decorated functions "
+        "must use the @pytest.mark.idempotent marker."
+    )
+
+
 class ReturnValuesNotEqual(Exception):
     message = "Return values of idempotent functions must be equal."
 
@@ -153,7 +165,7 @@ def pytest_collection(session: pytest.Session) -> None:
                     and _global_state.current_test_item.get_closest_marker("idempotent")
                     is None
                 ):
-                    pytest.fail(
+                    raise MissingPytestIdempotentMarker(
                         "Test contains a call to the @idempotent decorated function: "
                         f"'{user_func.__qualname__}',\nbut the test does not use "
                         "the @pytest.mark.idempotent marker.\nPlease add this "

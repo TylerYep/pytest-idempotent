@@ -14,13 +14,13 @@ class Result(NamedTuple):
     (
         ("test_class.py", Result(passed=7, failed=0)),
         ("test_correct_behavior.py", Result(passed=2, failed=0)),
-        # ("test_custom_decorator.py", Result(passed=2, failed=0)),
         ("test_equal_return_fail.py", Result(passed=1, failed=1)),
         ("test_equal_return_pass.py", Result(passed=2, failed=0)),
         ("test_incorrect_but_idempotent.py", Result(passed=0, failed=2)),
         ("test_missing_marker_fail.py", Result(passed=0, failed=1)),
         ("test_missing_marker_ignore.py", Result(passed=1, failed=0)),
         ("test_missing_marker_pass.py", Result(passed=1, failed=0)),
+        ("test_missing_marker_in_try_except.py", Result(passed=0, failed=1)),
         ("test_not_idempotent.py", Result(passed=1, failed=1)),
     ),
 )
