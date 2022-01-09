@@ -13,6 +13,27 @@ from _pytest.python import Function, Metafunc
 _F = TypeVar("_F", bound=Callable[..., Any])
 NO_IDEMPOTENCY_ID = "no_idempotency"
 CHECK_IDEMPOTENCY_ID = "check_idempotency"
+MISSING_PYTEST_MARKER = (
+    "Test contains a call to the @idempotent decorated function: '{}',\n"
+    "but the test does not have the @pytest.mark.idempotent marker.\n"
+    "Please add this marker to your test function or test class.\n"
+    "To skip idempotency testing, add the marker with enabled=False: "
+    "@pytest.mark.idempotent(enabled=False)"
+)
+IDEMPOTENCY_TEST_OUT_OF_ORDER = (
+    "Idempotency tests are not in the correct sorted order.\n"
+    "Running this idempotency test regardless, but for best results "
+    "it is recommended that you disable random ordering of your tests."
+)
+SKIPPING_IDEMPOTENCY_CHECK = (
+    "The first run of this test either failed or did not contain "
+    "an @idempotent function call, so skipping idempotency test."
+)
+MISSING_IDEMPOTENT_FUNCTION = (
+    "Test is marked with @pytest.mark.idempotent but does not contain "
+    "an @idempotent decorated function.\nEither remove the marker or use "
+    "@pytest.mark.idempotent(enabled=False)."
+)
 
 # ------------------- Exceptions -------------------
 
@@ -123,9 +144,14 @@ def pytest_collection(session: pytest.Session) -> None:
         session.config.pluginmanager.hook.pytest_idempotent_decorator()
         or "pytest_idempotent.idempotent"
     )
+    enforce_test_setting = (
+        session.config.pluginmanager.hook.pytest_idempotent_enforce_tests()
+    )
 
     def _idempotent(
-        func: _F | None = None, equal_return: bool = False, enforce_tests: bool = True
+        func: _F | None = None,
+        equal_return: bool = False,
+        enforce_tests: bool | None = None,
     ) -> Any:
         """
         Adds the `equal_return` parameter.
@@ -154,18 +180,17 @@ def pytest_collection(session: pytest.Session) -> None:
                 _global_state.contains_idempotent_function = True
                 assert _global_state.current_test_item is not None
                 if (
-                    enforce_tests
-                    and _global_state.current_test_item.get_closest_marker("idempotent")
+                    _global_state.current_test_item.get_closest_marker("idempotent")
                     is None
                 ):
-                    raise MissingPytestIdempotentMarker(
-                        "Test contains a call to the @idempotent decorated function: "
-                        f"'{user_func.__qualname__}',\nbut the test does not have "
-                        "the @pytest.mark.idempotent marker.\nPlease add this "
-                        "marker to your test function or test class.\nTo skip "
-                        "idempotency testing, add the marker with enabled=False: "
-                        "@pytest.mark.idempotent(enabled=False)"
-                    )
+                    message = MISSING_PYTEST_MARKER.format(user_func.__qualname__)
+                    if enforce_tests is None:
+                        if enforce_test_setting is None or enforce_test_setting:
+                            raise MissingPytestIdempotentMarker(message)
+                        warnings.warn(message)
+                    elif enforce_tests:
+                        raise MissingPytestIdempotentMarker(message)
+
                 run_1 = user_func(*args, **kwargs)
                 if _global_state.should_run_twice:
                     run_2 = user_func(*args, **kwargs)
@@ -210,16 +235,9 @@ def pytest_runtest_call(item: Function) -> None:
     if is_idempotency_test(item, CHECK_IDEMPOTENCY_ID):
         first_run_result = _global_state.all_test_runs.get(get_pair_nodeid(item))
         if first_run_result is None:
-            warnings.warn(
-                "Idempotency tests are not in the correct sorted order.\n"
-                "Running this idempotency test regardless, but for best results "
-                "it is recommended that you disable random ordering of your tests."
-            )
+            warnings.warn(IDEMPOTENCY_TEST_OUT_OF_ORDER)
         elif not first_run_result:
-            pytest.skip(
-                "The first run of this test either failed or did not contain "
-                "an @idempotent function call, so skipping idempotency test."
-            )
+            pytest.skip(SKIPPING_IDEMPOTENCY_CHECK)
 
     _global_state.current_test_item = item
     _global_state.contains_idempotent_function = False
@@ -235,11 +253,7 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
     if not _global_state.contains_idempotent_function and is_idempotency_test(
         item, CHECK_IDEMPOTENCY_ID
     ):
-        warnings.warn(
-            "Test is marked with @pytest.mark.idempotent but does not contain "
-            "an @idempotent decorated function.\nEither remove the marker or use "
-            "@pytest.mark.idempotent(enabled=False)."
-        )
+        warnings.warn(MISSING_IDEMPOTENT_FUNCTION)
 
 
 def pytest_runtest_makereport(item: Function, call: Any) -> None:
@@ -259,6 +273,13 @@ class PytestIdempotentSpec:
         """
         Plugin users define this function in conftest.py to configure
         the default path for the @idempotent decorator.
+        """
+
+    @pytest.hookspec(firstresult=True)  # type: ignore[misc]
+    def pytest_idempotent_enforce_tests(self) -> bool:
+        """
+        Plugin users define this function in conftest.py to enforce all tests
+        with an @idempotent function use the @pytest.mark.idempotent marker.
         """
 
 
