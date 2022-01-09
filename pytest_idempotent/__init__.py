@@ -33,12 +33,12 @@ class GlobalState:
     """
     Store essential metadata needed during the test runs.
 
-    CHECK_IDEMPOTENCY: used to toggle the idempotency patch on/off.
+    should_run_twice: used to toggle the idempotency patch on/off.
     current_test_item: a reference to the current pytest test context.
     contains_idempotent_function: True if an @idempotent decorated function was called.
     """
 
-    CHECK_IDEMPOTENCY: bool = False
+    should_run_twice: bool = False
     current_test_item: Function | None = None
     contains_idempotent_function: bool = True  # default True until test begins
 
@@ -101,18 +101,18 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
             "add_idempotency_check",
             (False, True),
             indirect=True,
-            ids=("no-idempotency-check", "idempotency-check"),
+            ids=("no-idempotency", "check-idempotency"),
         )
 
 
 @pytest.fixture(autouse=True)
 def add_idempotency_check(request: SubRequest) -> Iterator[None]:
     """
-    This fixture is added to all tests, but only patches CHECK_IDEMPOTENCY
+    This fixture is added to all tests, but only patches GlobalState.should_run_twice
     if this fixture is parametrized by the pytest_generate_tests metafunc.
     """
     if hasattr(request, "param"):
-        with patch("pytest_idempotent.GlobalState.CHECK_IDEMPOTENCY", request.param):
+        with patch("pytest_idempotent.GlobalState.should_run_twice", request.param):
             yield
     else:
         yield
@@ -178,7 +178,7 @@ def pytest_collection(session: pytest.Session) -> None:
                         "@pytest.mark.idempotent(enabled=False)"
                     )
                 run_1 = user_func(*args, **kwargs)
-                if _global_state.CHECK_IDEMPOTENCY:
+                if _global_state.should_run_twice:
                     run_2 = user_func(*args, **kwargs)
                     if equal_return and run_1 != run_2:
                         raise ReturnValuesNotEqual(run_1, run_2)
@@ -213,12 +213,12 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
     if (
         not _global_state.contains_idempotent_function
         and is_idempotent_marker_enabled(item)
-        and item.callspec.id == "idempotency-check"
+        and "check-idempotency" in item.callspec.id
     ):
         warnings.warn(
             "Test is marked with @pytest.mark.idempotent but does not contain "
-            "an @idempotent decorated function. Either remove the marker or use "
-            "@pytest.mark.idempotent(enabled=False) instead."
+            "an @idempotent decorated function.\nEither remove the marker or use "
+            "@pytest.mark.idempotent(enabled=False)."
         )
 
 

@@ -23,7 +23,7 @@ class Result(NamedTuple):
         ("test_missing_marker_pass.py", Result(passed=1, failed=0)),
         ("test_missing_marker_in_try_except.py", Result(passed=0, failed=1)),
         ("test_not_idempotent.py", Result(passed=1, failed=1)),
-        ("test_warn_unnecessary_marker.py", Result(passed=5, failed=0, warnings=2)),
+        ("test_warn_unnecessary_marker.py", Result(passed=9, failed=0, warnings=4)),
     ),
 )
 def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:

@@ -28,6 +28,16 @@ class TestClass:
         assert x == [9]
 
     @staticmethod
+    @pytest.mark.parametrize("arg1,arg2", ((1, 2), (3, 4)))
+    def test_warning_inside_parametrized(arg1: int, arg2: int) -> None:
+        del arg1, arg2
+        x: list[int] = []
+
+        undecorated_function(x)
+
+        assert x == [9]
+
+    @staticmethod
     @pytest.mark.idempotent(enabled=False)
     def test_no_warnings() -> None:
         x: list[int] = []

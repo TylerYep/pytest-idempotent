@@ -22,6 +22,7 @@ Suppose we had the following function, that we (incorrectly) assumed was idempot
 First, we can label the function with a decorator:
 
 ```python
+# abc.py
 from pytest_idempotent import idempotent  # or use your own decorator! See below.
 
 @idempotent
@@ -34,7 +35,7 @@ Note: this function is _not_ idempotent because calling it on the same list `x` 
 We can write an idempotency test for this function as follows:
 
 ```python
-# idempotency_test.py
+# tests/abc_test.py
 import pytest
 
 @pytest.mark.idempotent
@@ -55,7 +56,7 @@ Adding the `@pytest.mark.idempotent` mark automatically splits this test into tw
 platform darwin -- Python 3.9.2, pytest-6.2.5
 collected 2 items
 
-tests/idempotency_test.py .F                     [100%]
+tests/abc_test.py .F                     [100%]
 
 =====================  FAILURES ========================
 ------------- test_func[idempotency-check] -------------
@@ -71,9 +72,9 @@ E       assert [9, 9] == [9]
 E         Left contains one more item: 9
 E         Use -v to get the full diff
 
-tests/idempotency_test.py:19: AssertionError
+tests/abc_test.py:19: AssertionError
 =============== short test summary info ================
-FAILED tests/idempotency_test.py::test_func[idempotency-check]
+FAILED tests/abc_test.py::test_func[idempotency-check]
   - assert [9, 9] == [9]
 ============= 1 failed, 1 passed in 0.16s ==============
 ```
@@ -93,7 +94,7 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - Both runs need to pass all assertions.
   - We return the first result because the first run will complete the processing. The second will either return exact the same result or be a no-op.
   - To disable idempotency testing for a test or group of tests, add the Pytest marker:
-    `@pytest.mark.idempotent(run_twice=False)`
+    `@pytest.mark.idempotent(enabled=False)`
 
 ## @idempotent decorator
 
@@ -132,7 +133,7 @@ def pytest_idempotent_decorator() -> str:
 By default, any test that calls an `@idempotent` function must also be decorated with the marker `@pytest.mark.idempotent`.
 
 To disable idempotency testing for a test or group of tests, use:
-`@pytest.mark.idempotent(run_twice=False)`.
+`@pytest.mark.idempotent(enabled=False)`.
 
 <!-- To automatically enable this marker for all tests, you can use a custom autouse fixture. (Warning: this will run ALL tests twice, regardless of whether they contain an idempotent function or not.) -->
 
