@@ -40,9 +40,11 @@ class GlobalState:
     """
     Store essential metadata needed during the test runs.
 
-    should_run_twice: used to toggle the idempotency patch on/off.
-    current_test_item: a reference to the current pytest test context.
-    contains_idempotent_function: True if an @idempotent decorated function was called.
+    - should_run_twice: used to toggle the idempotency patch on/off.
+    - current_test_item: a reference to the current pytest test context.
+    - contains_idempotent_function: True if an @idempotent decorated function called.
+    - all_test_runs: dict mapping item.nodeid to bool(NO_IDEMPOTENCY_ID test passed
+        and test contained at least 1 @idempotent decorated function)
     """
 
     should_run_twice: bool = False
@@ -92,33 +94,6 @@ def idempotent(
 # ------------------- Pytest Hooks -------------------
 
 
-def is_idempotent_marker_enabled(item: Function) -> bool:
-    """Returns True if the test item has the @pytest.mark.idempotent marker enabled."""
-    marker = item.get_closest_marker("idempotent")
-    return marker is not None and (
-        "enabled" not in marker.kwargs or marker.kwargs["enabled"]
-    )
-
-
-def pytest_generate_tests(metafunc: Metafunc) -> None:
-    """
-    If @pytest.mark.idempotent is added to a function or class, run all
-    selected tests twice, one as normal and one with the idempotency check.
-
-    Allowed forms:
-    @pytest.mark.idempotent
-    @pytest.mark.idempotent(enabled=True)
-    @pytest.mark.idempotent(enabled=False)
-    """
-    if is_idempotent_marker_enabled(metafunc.definition):
-        metafunc.parametrize(
-            "add_idempotency_check",
-            (False, True),
-            indirect=True,
-            ids=(NO_IDEMPOTENCY_ID, CHECK_IDEMPOTENCY_ID),
-        )
-
-
 @pytest.fixture(autouse=True)
 def add_idempotency_check(request: SubRequest) -> Iterator[None]:
     """
@@ -163,7 +138,7 @@ def pytest_collection(session: pytest.Session) -> None:
 
         @wraps(cast(_F, func))
         def _idempotent_inner(user_func: _F) -> _F:
-            """Wrapper function used to handle the decorator with + without args."""
+            """Wrapper function used to handle the decorator with or without args."""
 
             def run_twice(*args: Any, **kwargs: Any) -> Any:
                 """
@@ -185,7 +160,7 @@ def pytest_collection(session: pytest.Session) -> None:
                 ):
                     raise MissingPytestIdempotentMarker(
                         "Test contains a call to the @idempotent decorated function: "
-                        f"'{user_func.__qualname__}',\nbut the test does not use "
+                        f"'{user_func.__qualname__}',\nbut the test does not have "
                         "the @pytest.mark.idempotent marker.\nPlease add this "
                         "marker to your test function or test class.\nTo skip "
                         "idempotency testing, add the marker with enabled=False: "
@@ -208,10 +183,23 @@ def pytest_collection(session: pytest.Session) -> None:
     patch(decorator_path, _idempotent).start()
 
 
-def pytest_collection_finish(session: pytest.Session) -> None:
-    for item in session.items:
-        if NO_IDEMPOTENCY_ID in item.name:
-            _global_state.all_test_runs[item.nodeid] = False
+def pytest_generate_tests(metafunc: Metafunc) -> None:
+    """
+    If @pytest.mark.idempotent is added to a function or class, run all
+    selected tests twice, one as normal and one with the idempotency check.
+
+    Allowed forms:
+    @pytest.mark.idempotent
+    @pytest.mark.idempotent(enabled=True)
+    @pytest.mark.idempotent(enabled=False)
+    """
+    if is_idempotent_marker_enabled(metafunc.definition):
+        metafunc.parametrize(
+            "add_idempotency_check",
+            (False, True),
+            indirect=True,
+            ids=(NO_IDEMPOTENCY_ID, CHECK_IDEMPOTENCY_ID),
+        )
 
 
 def pytest_runtest_call(item: Function) -> None:
@@ -219,14 +207,19 @@ def pytest_runtest_call(item: Function) -> None:
     Before the test begins, update the global state to
     point to the current test context.
     """
-    if (
-        hasattr(item, "callspec")
-        and CHECK_IDEMPOTENCY_ID in item.callspec.id
-        and not _global_state.all_test_runs[get_pair_nodeid(item)]
-    ):
-        pytest.skip(
-            "First test either failed or did not contain an @idempotent function."
-        )
+    if is_idempotency_test(item, CHECK_IDEMPOTENCY_ID):
+        first_run_result = _global_state.all_test_runs.get(get_pair_nodeid(item))
+        if first_run_result is None:
+            warnings.warn(
+                "Idempotency tests are not in the correct sorted order.\n"
+                "Running this idempotency test regardless, but for best results "
+                "it is recommended that you disable random ordering of your tests."
+            )
+        elif not first_run_result:
+            pytest.skip(
+                "The first run of this test either failed or did not contain "
+                "an @idempotent function call, so skipping idempotency test."
+            )
 
     _global_state.current_test_item = item
     _global_state.contains_idempotent_function = False
@@ -236,13 +229,11 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
     """
     Warns if the finished test has the @pytest.mark.idempotent marker
     but did not call any function with the @idempotent decorator. This discourages
-    users from running many tests twice unecessarily.
+    users from running many tests twice unecessarily (the second is skipped).
     """
     del nextitem
-    if (
-        not _global_state.contains_idempotent_function
-        and is_idempotent_marker_enabled(item)
-        and CHECK_IDEMPOTENCY_ID in item.callspec.id
+    if not _global_state.contains_idempotent_function and is_idempotency_test(
+        item, CHECK_IDEMPOTENCY_ID
     ):
         warnings.warn(
             "Test is marked with @pytest.mark.idempotent but does not contain "
@@ -252,16 +243,12 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
 
 
 def pytest_runtest_makereport(item: Function, call: Any) -> None:
-    if (
-        call.when == "call"
-        and is_idempotent_marker_enabled(item)
-        and NO_IDEMPOTENCY_ID in item.callspec.id
-        and not call.excinfo
-    ):
-        # Test passed
-        _global_state.all_test_runs[item.nodeid] = True
-        if not _global_state.contains_idempotent_function:
-            _global_state.all_test_runs[item.nodeid] = False
+    """If a NO_IDEMPOTENCY_ID test passes, add the result to all_test_runs."""
+    if call.when == "call" and is_idempotency_test(item, NO_IDEMPOTENCY_ID):
+        # Store test result, or False if @idempotent function is missing.
+        _global_state.all_test_runs[item.nodeid] = (
+            not call.excinfo if _global_state.contains_idempotent_function else False
+        )
 
 
 class PytestIdempotentSpec:
@@ -280,6 +267,22 @@ def pytest_addhooks(pluginmanager: PytestPluginManager) -> None:
 
 
 # ------------------- Util Functions -------------------
+
+
+def is_idempotent_marker_enabled(item: Function) -> bool:
+    """Returns True if the test item has the @pytest.mark.idempotent marker enabled."""
+    marker = item.get_closest_marker("idempotent")
+    return marker is not None and (
+        "enabled" not in marker.kwargs or marker.kwargs["enabled"]
+    )
+
+
+def is_idempotency_test(item: Function, test_id: str) -> bool:
+    """
+    Returns True if the test item has the @pytest.mark.idempotent marker
+    enabled and matches the given test_id.
+    """
+    return is_idempotent_marker_enabled(item) and test_id in item.callspec.id
 
 
 def get_pair_nodeid(item: Function) -> str:
