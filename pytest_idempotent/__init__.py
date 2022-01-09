@@ -9,13 +9,14 @@ import pytest
 from _pytest.config import Config, PytestPluginManager
 from _pytest.fixtures import SubRequest
 from _pytest.python import Function, Metafunc
+from _pytest.runner import CallInfo
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 NO_IDEMPOTENCY_ID = "no_idempotency"
 CHECK_IDEMPOTENCY_ID = "check_idempotency"
 MISSING_PYTEST_MARKER = (
     "Test contains a call to the @idempotent decorated function: '{}',\n"
-    "but the test does not have the @pytest.mark.idempotent marker.\n"
+    "but the test does not have the @pytest.mark.idempotent marker. "
     "Please add this marker to your test function or test class.\n"
     "To skip idempotency testing, add the marker with enabled=False: "
     "@pytest.mark.idempotent(enabled=False)"
@@ -42,6 +43,7 @@ class MissingPytestIdempotentMarker(BaseException):
     """
     This exception should fail the test immediately. To capture most cases,
     we inherit BaseException in order to force exit the test.
+    Ideally, we could use pytest.fail(), but that hangs in tests with multiple threads.
     """
 
     message = (
@@ -256,7 +258,7 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
         warnings.warn(MISSING_IDEMPOTENT_FUNCTION)
 
 
-def pytest_runtest_makereport(item: Function, call: Any) -> None:
+def pytest_runtest_makereport(item: Function, call: CallInfo[None]) -> None:
     """If a NO_IDEMPOTENCY_ID test passes, add the result to all_test_runs."""
     if call.when == "call" and is_idempotency_test(item, NO_IDEMPOTENCY_ID):
         # Store test result, or False if @idempotent function is missing.
