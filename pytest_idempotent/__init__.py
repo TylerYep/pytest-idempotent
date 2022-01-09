@@ -11,6 +11,10 @@ from _pytest.fixtures import SubRequest
 from _pytest.python import Function, Metafunc
 
 _F = TypeVar("_F", bound=Callable[..., Any])
+NO_IDEMPOTENCY_ID = "no_idempotency"
+CHECK_IDEMPOTENCY_ID = "check_idempotency"
+
+# ------------------- Exceptions -------------------
 
 
 class MissingPytestIdempotentMarker(BaseException):
@@ -29,6 +33,9 @@ class ReturnValuesNotEqual(Exception):
     message = "Return values of idempotent functions must be equal."
 
 
+# ------------------- GlobalState -------------------
+
+
 class GlobalState:
     """
     Store essential metadata needed during the test runs.
@@ -41,9 +48,13 @@ class GlobalState:
     should_run_twice: bool = False
     current_test_item: Function | None = None
     contains_idempotent_function: bool = True  # default True until test begins
+    all_test_runs: dict[str, bool] = {}
 
 
 _global_state = GlobalState()  # global variable needed for idempotency checking
+
+
+# ------------------- User-facing imports -------------------
 
 
 @overload
@@ -78,6 +89,9 @@ def idempotent(
     return _idempotent_inner if func is None else _idempotent_inner(func)
 
 
+# ------------------- Pytest Hooks -------------------
+
+
 def is_idempotent_marker_enabled(item: Function) -> bool:
     """Returns True if the test item has the @pytest.mark.idempotent marker enabled."""
     marker = item.get_closest_marker("idempotent")
@@ -101,7 +115,7 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
             "add_idempotency_check",
             (False, True),
             indirect=True,
-            ids=("no-idempotency", "check-idempotency"),
+            ids=(NO_IDEMPOTENCY_ID, CHECK_IDEMPOTENCY_ID),
         )
 
 
@@ -194,11 +208,26 @@ def pytest_collection(session: pytest.Session) -> None:
     patch(decorator_path, _idempotent).start()
 
 
+def pytest_collection_finish(session: pytest.Session) -> None:
+    for item in session.items:
+        if NO_IDEMPOTENCY_ID in item.name:
+            _global_state.all_test_runs[item.nodeid] = False
+
+
 def pytest_runtest_call(item: Function) -> None:
     """
     Before the test begins, update the global state to
     point to the current test context.
     """
+    if (
+        hasattr(item, "callspec")
+        and CHECK_IDEMPOTENCY_ID in item.callspec.id
+        and not _global_state.all_test_runs[get_pair_nodeid(item)]
+    ):
+        pytest.skip(
+            "First test either failed or did not contain an @idempotent function."
+        )
+
     _global_state.current_test_item = item
     _global_state.contains_idempotent_function = False
 
@@ -213,13 +242,26 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
     if (
         not _global_state.contains_idempotent_function
         and is_idempotent_marker_enabled(item)
-        and "check-idempotency" in item.callspec.id
+        and CHECK_IDEMPOTENCY_ID in item.callspec.id
     ):
         warnings.warn(
             "Test is marked with @pytest.mark.idempotent but does not contain "
             "an @idempotent decorated function.\nEither remove the marker or use "
             "@pytest.mark.idempotent(enabled=False)."
         )
+
+
+def pytest_runtest_makereport(item: Function, call: Any) -> None:
+    if (
+        call.when == "call"
+        and is_idempotent_marker_enabled(item)
+        and NO_IDEMPOTENCY_ID in item.callspec.id
+        and not call.excinfo
+    ):
+        # Test passed
+        _global_state.all_test_runs[item.nodeid] = True
+        if not _global_state.contains_idempotent_function:
+            _global_state.all_test_runs[item.nodeid] = False
 
 
 class PytestIdempotentSpec:
@@ -235,3 +277,13 @@ class PytestIdempotentSpec:
 
 def pytest_addhooks(pluginmanager: PytestPluginManager) -> None:
     pluginmanager.add_hookspecs(PytestIdempotentSpec)
+
+
+# ------------------- Util Functions -------------------
+
+
+def get_pair_nodeid(item: Function) -> str:
+    return (
+        f"{item.nodeid[:item.nodeid.index('[')]}"
+        f"[{item.callspec.id.replace(CHECK_IDEMPOTENCY_ID, NO_IDEMPOTENCY_ID)}]"
+    )

@@ -5,25 +5,28 @@ from _pytest.pytester import Pytester
 
 
 class Result(NamedTuple):
-    passed: int
-    failed: int
+    passed: int = 0
+    failed: int = 0
+    skipped: int = 0
     warnings: int = 0
 
 
 @pytest.mark.parametrize(
     "filename,expected",
     (
-        ("test_class.py", Result(passed=7, failed=0)),
-        ("test_correct_behavior.py", Result(passed=2, failed=0)),
+        ("test_class.py", Result(passed=7)),
+        ("test_correct_behavior.py", Result(passed=2)),
         ("test_equal_return_fail.py", Result(passed=1, failed=1)),
-        ("test_equal_return_pass.py", Result(passed=2, failed=0)),
-        ("test_incorrect_but_idempotent.py", Result(passed=0, failed=2)),
-        ("test_missing_marker_fail.py", Result(passed=0, failed=1)),
-        ("test_missing_marker_ignore.py", Result(passed=1, failed=0)),
-        ("test_missing_marker_pass.py", Result(passed=1, failed=0)),
-        ("test_missing_marker_in_try_except.py", Result(passed=0, failed=1)),
+        ("test_equal_return_pass.py", Result(passed=2)),
+        ("test_first_failed_skip_second.py", Result(skipped=1, failed=1)),
+        ("test_first_missing_skip_second.py", Result(skipped=1, failed=1, warnings=1)),
+        ("test_incorrect_but_idempotent.py", Result(failed=1, skipped=1)),
+        ("test_missing_marker_fail.py", Result(failed=1)),
+        ("test_missing_marker_ignore.py", Result(passed=1)),
+        ("test_missing_marker_pass.py", Result(passed=1)),
+        ("test_missing_marker_in_try_except.py", Result(failed=1)),
         ("test_not_idempotent.py", Result(passed=1, failed=1)),
-        ("test_warn_unnecessary_marker.py", Result(passed=9, failed=0, warnings=4)),
+        ("test_warn_unnecessary_marker.py", Result(passed=5, skipped=4, warnings=4)),
     ),
 )
 def test_plugin(pytester: Pytester, filename: str, expected: Result) -> None:
