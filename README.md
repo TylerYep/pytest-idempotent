@@ -47,7 +47,7 @@ def test_func() -> None:
     assert x == [9]
 ```
 
-Adding the `@pytest.mark.idempotent` mark automatically splits this test into two - one that tests the regular behavior and one that tests that the function can be called twice without adverse effects.
+Adding the `@pytest.mark.idempotent` mark automatically splits this test into two - one that tests the regular behavior, and one that tests that the function can be called twice without adverse effects.
 
 ```
 ❯❯❯ pytest
@@ -96,6 +96,41 @@ Idempotency is a difficult pattern to enforce. To solve this issue, **pytest-ide
   - To disable idempotency testing for a test or group of tests, add the Pytest marker:
     `@pytest.mark.idempotent(enabled=False)`
 
+## Enforcing Tests Use `@pytest.mark.idempotent`
+
+By default, any test that calls an `@idempotent` function must also be decorated with the marker `@pytest.mark.idempotent`.
+
+To disable idempotency testing for a test or group of tests, use:
+`@pytest.mark.idempotent(enabled=False)`, or add the following config to your project:
+
+```python
+def pytest_idempotent_enforce_tests() -> bool:
+    return False
+```
+
+To disable enforced idempotency testing for a specific function, you can also pass the flag into the decorator:
+
+```python
+# abc.py
+from pytest_idempotent import idempotent
+
+@idempotent(enforce_tests=False)
+def func() -> None:
+    return
+```
+
+<!-- To automatically enable this marker for all tests, you can use a custom autouse fixture. (Warning: this will run ALL tests twice, regardless of whether they contain an idempotent function or not.) -->
+
+Or, you can automatically add the marker based on the test name by adding to `conftest.py`:
+
+```python
+# conftest.py
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if "idempotent" in item.nodeid:
+            item.add_marker(pytest.mark.idempotent)
+```
+
 ## @idempotent decorator
 
 By default, the `@idempotent` decorator does nothing during runtime. We do not want to add overhead to production code to run tests.
@@ -126,23 +161,4 @@ pytest_plugins = ["pytest_idempotent"]
 def pytest_idempotent_decorator() -> str:
     # This links to my custom implementation of @idempotent.
     return "src.utils.idempotent"
-```
-
-## Enforcing Tests Use `@pytest.mark.idempotent`
-
-By default, any test that calls an `@idempotent` function must also be decorated with the marker `@pytest.mark.idempotent`.
-
-To disable idempotency testing for a test or group of tests, use:
-`@pytest.mark.idempotent(enabled=False)`.
-
-<!-- To automatically enable this marker for all tests, you can use a custom autouse fixture. (Warning: this will run ALL tests twice, regardless of whether they contain an idempotent function or not.) -->
-
-Or, you can automatically add the marker based on the test name by adding to `conftest.py`:
-
-```python
-# conftest.py
-def pytest_collection_modifyitems(items):
-    for item in items:
-        if "idempotent" in item.nodeid:
-            item.add_marker(pytest.mark.idempotent)
 ```
