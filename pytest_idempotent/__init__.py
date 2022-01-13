@@ -89,23 +89,35 @@ def idempotent(func: _F | None) -> _F:
 
 @overload
 def idempotent(
-    *, equal_return: bool = False, enforce_tests: bool = True
+    *,
+    equal_return: bool = False,
+    raises_exception: type[Exception] | None = None,
+    enforce_tests: bool | None = None,
 ) -> Callable[[_F], _F]:
     ...  # pragma: no cover
 
 
 def idempotent(
-    func: _F | None = None, equal_return: bool = False, enforce_tests: bool = True
+    func: _F | None = None,
+    equal_return: bool = False,
+    raises_exception: type[Exception] | None = None,
+    enforce_tests: bool | None = None,
 ) -> Any:  # pragma: no cover
     """
-    No-op during runtime.
-    This marker allows Pytest to override the decorated function during
-    test-time to verify the function is idempotent (e.g. no side effects).
+    No-op during runtime. This marker allows Pytest to override the decorated function
+    during test-time to verify the function is idempotent (e.g. no side effects).
 
     Use `equal_return=True` to specify that the function should always returns
     the same output when run multiple times.
+
+    Use `raises_exception=MyException` to specify that the function will raise an
+    Exception in the event of an idempotency error.
+
+    Use `enforce_tests=True` to override the global config or to ensure all tests with
+    this function called use @pytest.mark.idempotent. Use `enforce_tests=False` to
+    disable this feature.
     """
-    del equal_return, enforce_tests
+    del equal_return, raises_exception, enforce_tests
 
     @wraps(cast(_F, func))
     def _idempotent_inner(user_func: _F) -> _F:
@@ -153,6 +165,7 @@ def pytest_collection(session: pytest.Session) -> None:
     def _idempotent(
         func: _F | None = None,
         equal_return: bool = False,
+        raises_exception: type[Exception] | None = None,
         enforce_tests: bool | None = None,
     ) -> Any:
         """
@@ -195,7 +208,14 @@ def pytest_collection(session: pytest.Session) -> None:
 
                 run_1 = user_func(*args, **kwargs)
                 if _global_state.should_run_twice:
-                    run_2 = user_func(*args, **kwargs)
+                    try:
+                        run_2 = user_func(*args, **kwargs)
+                    except Exception as exc:
+                        if raises_exception is not None and isinstance(
+                            exc, raises_exception
+                        ):
+                            return run_1
+                        raise
                     if equal_return and run_1 != run_2:
                         raise ReturnValuesNotEqual(run_1, run_2)
                 return run_1

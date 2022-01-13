@@ -18,6 +18,8 @@ TEST_MAPPING = {
         ("test_missing_marker_pass.py", Result(passed=1)),
         ("test_missing_marker_in_try_except.py", Result(failed=1)),
         ("test_not_idempotent.py", Result(passed=1, failed=1)),
+        ("test_raises_expected_exception.py", Result(passed=2)),
+        ("test_raises_unexpected_exception.py", Result(passed=1, failed=1)),
         ("test_warn_unnecessary_marker.py", Result(passed=5, skipped=4, warnings=4)),
     ),
     "custom_decorator": (("test_custom_decorator.py", Result(passed=1, failed=1)),),
