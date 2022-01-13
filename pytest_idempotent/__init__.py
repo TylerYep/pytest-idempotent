@@ -110,8 +110,8 @@ def idempotent(
     Use `equal_return=True` to specify that the function should always returns
     the same output when run multiple times.
 
-    Use `raises_exception=MyException` to specify that the function will raise an
-    Exception in the event of an idempotency error.
+    Use `raises_exception=MyException` to specify that the function will raise a
+    specific Exception type in the event of an idempotency error.
 
     Use `enforce_tests=True` to override the global config or to ensure all tests with
     this function called use @pytest.mark.idempotent. Use `enforce_tests=False` to

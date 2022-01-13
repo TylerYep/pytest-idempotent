@@ -31,6 +31,7 @@ TEST_MAPPING = {
         ("test_missing_marker_fail.py", Result(passed=1, warnings=1)),
         ("test_missing_marker_ignore.py", Result(passed=1)),
         ("test_missing_marker_pass.py", Result(passed=1)),
+        ("test_missing_marker_method_override.py", Result(failed=1)),
         ("test_missing_marker_in_try_except.py", Result(passed=1, warnings=1)),
     ),
 }
