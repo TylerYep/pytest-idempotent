@@ -56,6 +56,18 @@ class ReturnValuesNotEqual(Exception):
     message = "Return values of idempotent functions must be equal."
 
 
+class FailedToRaiseIdempotencyException(Exception):
+    def __init__(self, expected: type[Exception], *args: Any, **kwargs: Any) -> None:
+        super().__init__(
+            (
+                f"@idempotent decorator has raises_exception={expected} but "
+                "the second run did not trigger the expected Exception."
+            ),
+            *args,
+            **kwargs,
+        )
+
+
 # ------------------- GlobalState -------------------
 
 
@@ -218,6 +230,8 @@ def pytest_collection(session: pytest.Session) -> None:
                         raise
                     if equal_return and run_1 != run_2:
                         raise ReturnValuesNotEqual(run_1, run_2)
+                    if raises_exception is not None:
+                        raise FailedToRaiseIdempotencyException(raises_exception)
                 return run_1
 
             return cast(_F, run_twice)

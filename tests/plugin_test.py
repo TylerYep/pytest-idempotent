@@ -10,6 +10,7 @@ TEST_MAPPING = {
         ("test_correct_behavior.py", Result(passed=2)),
         ("test_equal_return_fail.py", Result(passed=1, failed=1)),
         ("test_equal_return_pass.py", Result(passed=2)),
+        ("test_fail_to_raise_expected_exception.py", Result(passed=3, failed=1)),
         ("test_first_failed_skip_second.py", Result(skipped=1, failed=1)),
         ("test_first_missing_skip_second.py", Result(skipped=1, failed=1, warnings=1)),
         ("test_incorrect_but_idempotent.py", Result(failed=1, skipped=1)),
