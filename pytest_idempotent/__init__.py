@@ -18,8 +18,15 @@ MISSING_PYTEST_MARKER = (
     "Test contains a call to the @idempotent decorated function: '{}',\n"
     "but the test does not have the @pytest.mark.idempotent marker. "
     "Please add this marker to your test function or test class.\n"
-    "To skip idempotency testing, add the marker with enabled=False: "
-    "@pytest.mark.idempotent(enabled=False)"
+    "- To skip idempotency checks as a one-off, add this marker to your test(s):\n"
+    "    @pytest.mark.idempotent(enabled=False)\n\n"
+    "- To stop enforcing test markers for this @idempotent function entirely, "
+    "add enforce_tests=False:\n"
+    "    @idempotent(enforce_tests=False)\n\n"
+    "- To disable this enforcing check globally, add the following function "
+    "to your conftest.py: \n"
+    "    def pytest_idempotent_enforce_tests() -> bool:\n"
+    "        return False"
 )
 IDEMPOTENCY_TEST_OUT_OF_ORDER = (
     "Idempotency tests are not in the correct sorted order.\n"
@@ -35,6 +42,14 @@ MISSING_IDEMPOTENT_FUNCTION = (
     "an @idempotent decorated function.\nEither remove the marker or use "
     "@pytest.mark.idempotent(enabled=False)."
 )
+RETURN_VALUES_NOT_EQUAL = (
+    "Return values of idempotent functions must be equal: {} != {}"
+)
+FAILED_TO_RAISE_IDEMPOTENCY_EXCEPTION = (
+    "@idempotent decorator has raises_exception={} but "
+    "the second run did not trigger the expected Exception."
+)
+
 
 # ------------------- Exceptions -------------------
 
@@ -46,26 +61,13 @@ class MissingPytestIdempotentMarker(BaseException):
     Ideally, we could use pytest.fail(), but that hangs in tests with multiple threads.
     """
 
-    message = (
-        "All tests containing @idempotent decorated functions "
-        "must use the @pytest.mark.idempotent marker."
-    )
-
 
 class ReturnValuesNotEqual(Exception):
-    message = "Return values of idempotent functions must be equal."
+    """Shows the user the differing return values of their idempotent function."""
 
 
 class FailedToRaiseIdempotencyException(Exception):
-    def __init__(self, expected: type[Exception], *args: Any, **kwargs: Any) -> None:
-        super().__init__(
-            (
-                f"@idempotent decorator has raises_exception={expected} but "
-                "the second run did not trigger the expected Exception."
-            ),
-            *args,
-            **kwargs,
-        )
+    """Idempotent function did not raise an exception on the second run."""
 
 
 # ------------------- GlobalState -------------------
@@ -123,7 +125,7 @@ def idempotent(
     the same output when run multiple times.
 
     Use `raises_exception=MyException` to specify that the function will raise a
-    specific Exception type in the event of an idempotency error.
+    specific MyException in the event of an idempotency error.
 
     Use `enforce_tests=True` to override the global config or to ensure all tests with
     this function called use @pytest.mark.idempotent. Use `enforce_tests=False` to
@@ -229,9 +231,15 @@ def pytest_collection(session: pytest.Session) -> None:
                             return run_1
                         raise
                     if equal_return and run_1 != run_2:
-                        raise ReturnValuesNotEqual(run_1, run_2)
+                        raise ReturnValuesNotEqual(
+                            RETURN_VALUES_NOT_EQUAL.format(run_1, run_2)
+                        )
                     if raises_exception is not None:
-                        raise FailedToRaiseIdempotencyException(raises_exception)
+                        raise FailedToRaiseIdempotencyException(
+                            FAILED_TO_RAISE_IDEMPOTENCY_EXCEPTION.format(
+                                raises_exception.__qualname__
+                            )
+                        )
                 return run_1
 
             return cast(_F, run_twice)
