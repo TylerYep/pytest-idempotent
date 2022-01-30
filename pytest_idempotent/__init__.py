@@ -78,14 +78,14 @@ class GlobalState:
     Store essential metadata needed during the test runs.
 
     - should_run_twice: used to toggle the idempotency patch on/off.
-    - current_test_item: a reference to the current pytest test context.
+    - current_test: a reference to the current pytest test context.
     - contains_idempotent_function: True if an @idempotent decorated function called.
     - all_test_runs: dict mapping item.nodeid to bool(NO_IDEMPOTENCY_ID test passed
         and test contained at least 1 @idempotent decorated function)
     """
 
     should_run_twice: bool = False
-    current_test_item: Function | None = None
+    current_test: Function | None = None
     contains_idempotent_function: bool = True  # default True until test begins
     all_test_runs: dict[str, bool] = {}
 
@@ -207,11 +207,8 @@ def pytest_collection(session: pytest.Session) -> None:
                     is acceptably idempotent, unless equal_return = True.
                 """
                 _global_state.contains_idempotent_function = True
-                assert _global_state.current_test_item is not None
-                if (
-                    _global_state.current_test_item.get_closest_marker("idempotent")
-                    is None
-                ):
+                assert _global_state.current_test is not None
+                if _global_state.current_test.get_closest_marker("idempotent") is None:
                     message = MISSING_PYTEST_MARKER.format(user_func.__qualname__)
                     if enforce_tests is None:
                         if enforce_test_setting is None or enforce_test_setting:
@@ -283,7 +280,7 @@ def pytest_runtest_call(item: Function) -> None:
         elif not first_run_result:
             pytest.skip(SKIPPING_IDEMPOTENCY_CHECK)
 
-    _global_state.current_test_item = item
+    _global_state.current_test = item
     _global_state.contains_idempotent_function = False
 
 
