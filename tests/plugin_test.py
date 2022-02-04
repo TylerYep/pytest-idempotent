@@ -50,7 +50,4 @@ def test_plugin(
 
     result = pytester.runpytest("-W", "ignore::pytest.PytestAssertRewriteWarning")
 
-    # In Pytest 7, warnings is included in assert_outcomes()
-    expected_result = expected._asdict()
-    assert result.parseoutcomes().get("warnings", 0) == expected_result.pop("warnings")
-    result.assert_outcomes(**expected_result)
+    result.assert_outcomes(**expected._asdict())
