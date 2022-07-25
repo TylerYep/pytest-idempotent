@@ -20,7 +20,7 @@ MISSING_PYTEST_MARKER = (
     "To fix this issue, do one of the following:\n\n"
     "- Add the @pytest.mark.idempotent marker to your test function or test class:\n"
     "    @pytest.mark.idempotent\n\n"
-    "- Skip idempotency checks as a one-off, by adding this marker to your test(s):\n"
+    "- Skip idempotency checks as a one-off by adding this marker to your test(s):\n"
     "    @pytest.mark.idempotent(enabled=False)\n\n"
     "- Stop enforcing test markers for this @idempotent function entirely:\n"
     "    @idempotent(enforce_tests=False)\n\n"
