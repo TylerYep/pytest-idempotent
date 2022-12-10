@@ -316,13 +316,15 @@ class PytestIdempotentSpec:
         Plugin users define this function in conftest.py to configure
         the default path for the @idempotent decorator.
         """
+        return ""  # This value is never used.
 
     @pytest.hookspec(firstresult=True)  # type: ignore[misc]
-    def pytest_idempotent_enforce_tests(self) -> bool:
+    def pytest_idempotent_enforce_tests(self) -> bool | None:
         """
         Plugin users define this function in conftest.py to enforce all tests
         with an @idempotent function use the @pytest.mark.idempotent marker.
         """
+        return None  # This value is never used.
 
 
 def pytest_addhooks(pluginmanager: PytestPluginManager) -> None:
