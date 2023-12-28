@@ -42,7 +42,7 @@ TEST_SUITE = [
 ]
 
 
-@pytest.mark.parametrize("conftest,filename,expected", TEST_SUITE)
+@pytest.mark.parametrize(("conftest", "filename", "expected"), TEST_SUITE)
 def test_plugin(
     pytester: Pytester, conftest: str, filename: str, expected: Result
 ) -> None:

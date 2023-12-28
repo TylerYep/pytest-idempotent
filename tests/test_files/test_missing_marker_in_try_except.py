@@ -14,7 +14,7 @@ def test_without_marker() -> None:
 
     try:
         my_function(x)
-    except Exception:  # pylint: disable=broad-except
+    except Exception:  # noqa: BLE001
         return
 
     assert x == [9]

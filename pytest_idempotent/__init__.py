@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import warnings
 from functools import wraps
-from typing import Any, Callable, Iterator, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterator, TypeVar, cast, overload
 from unittest.mock import patch
 
 import pytest
-from _pytest.config import Config, PytestPluginManager
-from _pytest.fixtures import SubRequest
-from _pytest.python import Function, Metafunc
-from _pytest.runner import CallInfo
+
+if TYPE_CHECKING:
+    from _pytest.config import Config, PytestPluginManager
+    from _pytest.fixtures import SubRequest
+    from _pytest.python import Function, Metafunc
+    from _pytest.runner import CallInfo
 
 _F = TypeVar("_F", bound=Callable[..., Any])
 NO_IDEMPOTENCY_ID = "no_idempotency"
@@ -88,7 +90,7 @@ class GlobalState:
     should_run_twice: bool = False
     current_test: Function | None = None
     contains_idempotent_function: bool = True  # default True until test begins
-    all_test_runs: dict[str, bool] = {}
+    all_test_runs: dict[str, bool] = {}  # noqa: RUF012
 
 
 _global_state = GlobalState()  # global variable needed for idempotency checking
@@ -145,7 +147,7 @@ def idempotent(
 
 
 @pytest.fixture(autouse=True)
-def add_idempotency_check(request: SubRequest) -> Iterator[None]:
+def add_idempotency_check(request: SubRequest) -> Iterator[None]:  # noqa: PT004
     """
     This fixture is added to all tests, but only patches GlobalState.should_run_twice
     if this fixture is parametrized by the pytest_generate_tests metafunc.
@@ -214,7 +216,7 @@ def pytest_collection(session: pytest.Session) -> None:
                     if enforce_tests is None:
                         if enforce_test_setting is None or enforce_test_setting:
                             raise MissingPytestIdempotentMarker(message)
-                        warnings.warn(message)
+                        warnings.warn(message, stacklevel=2)
                     elif enforce_tests:
                         raise MissingPytestIdempotentMarker(message)
 
@@ -277,7 +279,7 @@ def pytest_runtest_call(item: Function) -> None:
     if is_idempotency_test(item, CHECK_IDEMPOTENCY_ID):
         first_run_result = _global_state.all_test_runs.get(get_pair_nodeid(item))
         if first_run_result is None:
-            warnings.warn(IDEMPOTENCY_TEST_OUT_OF_ORDER)
+            warnings.warn(IDEMPOTENCY_TEST_OUT_OF_ORDER, stacklevel=2)
         elif not first_run_result:
             pytest.skip(SKIPPING_IDEMPOTENCY_CHECK)
 
@@ -295,7 +297,7 @@ def pytest_runtest_teardown(item: Function, nextitem: Function | None) -> None:
     if not _global_state.contains_idempotent_function and is_idempotency_test(
         item, CHECK_IDEMPOTENCY_ID
     ):
-        warnings.warn(MISSING_IDEMPOTENT_FUNCTION)
+        warnings.warn(MISSING_IDEMPOTENT_FUNCTION, stacklevel=2)
 
 
 def pytest_runtest_makereport(item: Function, call: CallInfo[None]) -> None:
@@ -310,7 +312,7 @@ def pytest_runtest_makereport(item: Function, call: CallInfo[None]) -> None:
 class PytestIdempotentSpec:
     """Hook specification namespace for this plugin."""
 
-    @pytest.hookspec(firstresult=True)  # type: ignore[misc]
+    @pytest.hookspec(firstresult=True)
     def pytest_idempotent_decorator(self) -> str:
         """
         Plugin users define this function in conftest.py to configure
@@ -318,7 +320,7 @@ class PytestIdempotentSpec:
         """
         return ""  # This value is never used.
 
-    @pytest.hookspec(firstresult=True)  # type: ignore[misc]
+    @pytest.hookspec(firstresult=True)
     def pytest_idempotent_enforce_tests(self) -> bool | None:
         """
         Plugin users define this function in conftest.py to enforce all tests
