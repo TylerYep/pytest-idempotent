@@ -100,8 +100,7 @@ _global_state = GlobalState()  # global variable needed for idempotency checking
 
 
 @overload
-def idempotent(func: _F | None) -> _F:
-    ...  # pragma: no cover
+def idempotent(func: _F | None) -> _F: ...  # pragma: no cover
 
 
 @overload
@@ -110,8 +109,7 @@ def idempotent(
     equal_return: bool = False,
     raises_exception: type[Exception] | None = None,
     enforce_tests: bool | None = None,
-) -> Callable[[_F], _F]:
-    ...  # pragma: no cover
+) -> Callable[[_F], _F]: ...  # pragma: no cover
 
 
 def idempotent(
