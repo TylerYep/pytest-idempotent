@@ -145,7 +145,7 @@ def idempotent(
 
 
 @pytest.fixture(autouse=True)
-def add_idempotency_check(request: SubRequest) -> Iterator[None]:  # noqa: PT004
+def add_idempotency_check(request: SubRequest) -> Iterator[None]:
     """
     This fixture is added to all tests, but only patches GlobalState.should_run_twice
     if this fixture is parametrized by the pytest_generate_tests metafunc.
