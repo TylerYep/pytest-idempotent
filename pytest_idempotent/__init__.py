@@ -352,6 +352,6 @@ def is_idempotency_test(item: Function, test_id: str) -> bool:
 
 def get_pair_nodeid(item: Function) -> str:
     return (
-        f"{item.nodeid[:item.nodeid.index('[')]}"
+        f"{item.nodeid[: item.nodeid.index('[')]}"
         f"[{item.callspec.id.replace(CHECK_IDEMPOTENCY_ID, NO_IDEMPOTENCY_ID)}]"
     )
