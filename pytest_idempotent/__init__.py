@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable, Iterator
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Iterator, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 from unittest.mock import patch
 
 import pytest
