@@ -135,7 +135,7 @@ def idempotent(
     """
     del equal_return, raises_exception, enforce_tests
 
-    @wraps(cast(_F, func))
+    @wraps(cast("_F", func))
     def _idempotent_inner(user_func: _F) -> _F:
         return user_func
 
@@ -193,7 +193,7 @@ def pytest_collection(session: pytest.Session) -> None:
             @idempotent(equal_return=True)
         """
 
-        @wraps(cast(_F, func))
+        @wraps(cast("_F", func))
         def _idempotent_inner(user_func: _F) -> _F:
             """Wrapper function used to handle the decorator with or without args."""
 
@@ -241,7 +241,7 @@ def pytest_collection(session: pytest.Session) -> None:
                         )
                 return run_1
 
-            return cast(_F, run_twice)
+            return cast("_F", run_twice)
 
         return _idempotent_inner if func is None else _idempotent_inner(func)
 
