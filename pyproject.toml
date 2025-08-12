@@ -1,4 +1,72 @@
-target-version = "py312"
+[project]
+name = "pytest_idempotent"
+version = "1.3.1"
+description = "Pytest plugin for testing function idempotence."
+authors = [
+    { name = "Tyler Yep", email = "tyep@cs.stanford.edu" },
+]
+readme = "README.md"
+license = "MIT"
+classifiers = [
+    "Operating System :: OS Independent",
+    "Framework :: Pytest",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.8"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "types-setuptools",
+]
+
+[project.urls]
+Homepage = "https://github.com/tyleryep/pytest-idempotent"
+
+[project.entry-points.pytest11]
+pytest_idempotent = "pytest_idempotent"
+
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = [
+    "tests",
+    "tests.*",
+    "tests.*.*",
+    "tests.*.*.*",
+]
+namespaces = false
+
+[tool.setuptools.package-data]
+pytest_idempotent = [
+    "py.typed",
+]
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+extra_checks = true
+enable_error_code = "explicit-override,ignore-without-code"
+
+[tool.ruff]
+target-version = "py38"
 lint.select = ["ALL"]
 lint.ignore = [
 	"ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
@@ -12,7 +80,6 @@ lint.ignore = [
 	"FBT002",  # Boolean default value in function definition
 	"FBT003",  # Boolean positional value in function call
 	"FIX002",  # Line contains TODO
-	"ISC001",  # Isort
 	"PLR0911", # Too many return statements (11 > 6)
 	"PLR2004", # Magic value used in comparison, consider replacing 2 with a constant variable
 	"PLR0912", # Too many branches
@@ -29,9 +96,5 @@ lint.ignore = [
 
 	# pytest-idempotent-specific ignores
 	"N818",   # Exception name `ReturnValuesNotEqual` should be named with an Error suffix
-	"PT023",  # Use `@pytest.mark.idempotent()` over `@pytest.mark.idempotent`
 	"TRY002", # Do not raise Exception
 ]
-
-[lint.flake8-pytest-style]
-fixture-parentheses = false

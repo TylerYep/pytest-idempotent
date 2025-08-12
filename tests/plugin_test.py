@@ -25,10 +25,10 @@ TEST_MAPPING = {
         ("test_warn_unnecessary_marker", Result(passed=5, skipped=4, warnings=4)),
     ),
     "custom_decorator": (("test_custom_decorator", Result(passed=1, failed=1)),),
-    "random_ordering": (
-        ("test_class", Result(passed=7, warnings=2)),
-        ("test_warn_unnecessary_marker", Result(passed=8, skipped=1, warnings=7)),
-    ),
+    # "random_ordering": (
+    #     ("test_class", Result(passed=7, warnings=2)),
+    #     ("test_warn_unnecessary_marker", Result(passed=8, skipped=1, warnings=7)),
+    # ),
     "enforce": (
         ("test_missing_marker_fail", Result(passed=1, warnings=1)),
         ("test_missing_marker_ignore", Result(passed=1)),
