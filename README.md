@@ -25,6 +25,7 @@ First, we can label the function with a decorator:
 # abc.py
 from pytest_idempotent import idempotent  # or use your own decorator! See below.
 
+
 @idempotent
 def func(x: list[int]) -> None:
     x += [9]
@@ -37,6 +38,7 @@ We can write an idempotency test for this function as follows:
 ```python
 # tests/abc_test.py
 import pytest
+
 
 @pytest.mark.idempotent
 def test_func() -> None:
@@ -113,6 +115,7 @@ To disable enforced idempotency testing for a specific function, you can also pa
 ```python
 # abc.py
 from pytest_idempotent import idempotent
+
 
 @idempotent(enforce_tests=False)
 def func() -> None:
